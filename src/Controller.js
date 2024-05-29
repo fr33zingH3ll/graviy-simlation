@@ -66,6 +66,7 @@ class Controller {
         }
         if (event.key === this.keybind.orbit) {
             this.control.orbit = !this.control.orbit;
+            this.game.player.setDesiredDistance();
             console.log(this.control.orbit);
         }
     }
@@ -99,13 +100,15 @@ class Controller {
 
     getOrbitalVector(dynamic_body, static_body) {
         const distanceVector = this.game.Vector.sub(dynamic_body.position, static_body.position);
-		const distance = this.game.Vector.magnitude(distanceVector);
+        const current_distance = this.game.Vector.magnitude(distanceVector);
 
-        const orbitalSpeed = G * static_body.mass / (distance * distance);
+        const orbitalSpeed = G * static_body.mass / (current_distance * current_distance);
+        
         const normalizedDistanceVector = this.game.Vector.normalise(distanceVector);
         const perpendicularDirection = this.game.Vector.perp(normalizedDistanceVector);
 
         const velocity = this.game.Vector.mult(perpendicularDirection, -orbitalSpeed);
+        
         return velocity;
     }
 }

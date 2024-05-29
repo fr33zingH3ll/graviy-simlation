@@ -14,6 +14,9 @@ class Game {
         this.Body = matter.Body;
         this.Events = matter.Events;
 		this.Vector = matter.Vector;
+		this.Mouse = matter.Mouse;
+		this.Composite = matter.Composite;
+		this.MouseConstraint = matter.MouseConstraint;
 
 		this.screenWidth = window.innerWidth;
 		this.screenHeight = window.innerHeight;
@@ -24,11 +27,8 @@ class Game {
 		});
 
 		this.engine = this.Engine.create();
-
-		this.engine.world.gravity.x = 0;
-		this.engine.world.gravity.y = 0;
-
-
+		this.world = this.engine.world;
+		this.world.gravity.scale = 0;
 
 		this.render = this.Render.create({
 			element: document.body,
@@ -40,18 +40,65 @@ class Game {
 			}
 		});
 
+		document.body.style.margin = 0;
+		document.body.style.overflow = 'hidden';
+		this.render.canvas.style.display = 'block';
+
 		this.add_pool(this.Bodies.circle(...Object.values(this.getRandomPosition(50)), 50, { isStatic: true, mass: 20 }));
-		this.add_pool(this.Bodies.circle(...Object.values(this.getRandomPosition(50)), 50, { isStatic: true, mass: 20 }));
-		this.add_pool(this.Bodies.circle(...Object.values(this.getRandomPosition(50)), 20, { mass: 1, restitution: 0.5}));
-		this.add_pool(this.Bodies.circle(...Object.values(this.getRandomPosition(50)), 20, { mass: 1}));
-		this.add_pool(this.Bodies.circle(...Object.values(this.getRandomPosition(50)), 20, { mass: 1}));
-		this.add_pool(this.Bodies.circle(...Object.values(this.getRandomPosition(50)), 20, { mass: 1}));
-		this.add_pool(this.Bodies.circle(...Object.values(this.getRandomPosition(50)), 20, { mass: 1}));
-		this.add_pool(this.Bodies.circle(...Object.values(this.getRandomPosition(50)), 20, { mass: 1}));
-		this.add_pool(this.Bodies.circle(...Object.values(this.getRandomPosition(50)), 20, { mass: 1}));
+		this.add_pool(this.Bodies.circle(...Object.values(this.getRandomPosition(50)), 20, { mass: 1 }));
+		this.add_pool(this.Bodies.circle(...Object.values(this.getRandomPosition(50)), 20, { mass: 1 }));
+		this.add_pool(this.Bodies.circle(...Object.values(this.getRandomPosition(50)), 20, { mass: 1 }));
+		this.add_pool(this.Bodies.circle(...Object.values(this.getRandomPosition(50)), 20, { mass: 1 }));
+		this.add_pool(this.Bodies.circle(...Object.values(this.getRandomPosition(50)), 20, { mass: 1 }));
+		this.add_pool(this.Bodies.circle(...Object.values(this.getRandomPosition(50)), 20, { mass: 1 }));
 		this.add_pool(this.player.body);
 
 		this.World.add(this.engine.world, [...this.pool]);
+
+		const mouse = this.Mouse.create(this.render.canvas);
+		const mouseConstraint = this.MouseConstraint.create(this.engine, {
+			mouse: mouse,
+			constraint: {
+				stiffness: 0.2,
+				render: {
+					visible: false
+				}
+			}
+		});
+
+		this.Composite.add(this.engine.world, mouseConstraint);
+		this.render.mouse = mouse;
+
+
+        // Add event listeners to pan the view with the mouse
+        this.isPanning = false;
+        this.start_x = 0;
+		this.start_y = 0;
+
+		this.render.canvas.addEventListener('mousedown', (event) => {
+            if (event.button === 2) {
+                this.isPanning = true;
+                this.start_x = event.clientX;
+                this.start_y = event.clientY;
+            }
+        });
+
+		this.render.canvas.addEventListener('mousemove', (event) => {
+            if (this.isPanning) {
+				const new_pos = {x: event.clientX, y: event.clientY};
+				const pos = this.Vector.sub(new_pos, { x: this.start_x, y: this.start_y });
+
+				this.start_x = new_pos.x;
+				this.start_y = new_pos.y;
+				this.Composite.translate(this.engine.world, pos);
+            }
+        });
+
+        this.render.canvas.addEventListener('mouseup', (event) => {
+            if (event.button === 2) {
+                this.isPanning = false;
+            }
+        });
 
 		this.Events.on(this.engine, 'beforeUpdate', () => {
 			this.applyCustomGravity();
@@ -60,6 +107,7 @@ class Game {
 
 	add_pool(entity) {
 		this.pool.push(entity);
+		this.Composite.add(this.world, entity);
 	}
 
 	getRandomPosition(radius) {
@@ -79,10 +127,9 @@ class Game {
 			
 			for (const static_body of static_bodies) {
 				if (!this.isValidVector(static_body.position)) return;
-				if (dynamic_body == this.player.body && this.player.controller.control.orbit) {
+				if (dynamic_body === this.player.body && this.player.controller.control.orbit) {
 					velocities.push(this.player.controller.getOrbitalVector(dynamic_body, static_body));
-					console.log("je balance le vecteur pour mettre en orbit")
-				}
+				} 
 					
 				const distanceVector = this.Vector.sub(dynamic_body.position, static_body.position);
 				const distance = this.Vector.magnitude(distanceVector);
