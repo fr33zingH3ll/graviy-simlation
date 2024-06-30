@@ -1,11 +1,30 @@
-class Player {
+import { Entity } from "./Entity.js";
+
+class Player extends Entity {
     constructor(game, options) {
-        this.game = game;
-        this.body = options.body;
+        super(game, options)
         this.controller = options.controller;
+
+        this.shot_cooldown = 500;
+        this.timer = 0;
+        this.can_shot = true;
     }
 
-    update() {
+    shot() {
+        console.log("j'ai tiré");
+    }
+
+    update(delta) {
+        if (this.timer >= this.shot_cooldown) {
+            this.timer = 0;
+            this.can_shot = true;
+        }
+        this.timer += delta;
+        if (this.can_shot && this.controller.control.left_click) {
+            this.shot();
+            this.can_shot = false;
+        }
+
     }
 }
 

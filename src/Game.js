@@ -1,6 +1,7 @@
 import * as matter from 'matter-js';
 import { Controller } from './Controller.js';
 import { Player } from './Player.js';
+import { Entity } from './Entity.js';
 
 const G = 0.06674;
 
@@ -21,15 +22,14 @@ class Game {
 		this.screenWidth = window.innerWidth;
 		this.screenHeight = window.innerHeight;
 
-		this.player = new Player(this, {
-			body: this.Bodies.rectangle(...Object.values(this.getRandomPosition(50)), 10, 10, { mass: 1}),
-			controller: new Controller(this)
-		});
-
+		this.zoom = 1;
+		this.zoomSpeed = 0.1;
+		this.simulationSpeed = 1;
+		
 		this.engine = this.Engine.create();
 		this.world = this.engine.world;
 		this.world.gravity.scale = 0;
-
+		
 		this.render = this.Render.create({
 			element: document.body,
 			engine: this.engine,
@@ -39,21 +39,34 @@ class Game {
 				wireframes: false
 			}
 		});
-
+		
 		document.body.style.margin = 0;
 		document.body.style.overflow = 'hidden';
 		this.render.canvas.style.display = 'block';
+		
+		this.player = new Player(this, {
+			body: this.Bodies.rectangle(...Object.values(this.getRandomPosition(50)), 10, 10, { mass: 1}),
+			controller: new Controller(this)
+		});
 
-		this.add_pool(this.Bodies.circle(...Object.values(this.getRandomPosition(50)), 50, { isStatic: true, mass: 20 }));
-		this.add_pool(this.Bodies.circle(...Object.values(this.getRandomPosition(50)), 20, { mass: 1 }));
-		this.add_pool(this.Bodies.circle(...Object.values(this.getRandomPosition(50)), 20, { mass: 1 }));
-		this.add_pool(this.Bodies.circle(...Object.values(this.getRandomPosition(50)), 20, { mass: 1 }));
-		this.add_pool(this.Bodies.circle(...Object.values(this.getRandomPosition(50)), 20, { mass: 1 }));
-		this.add_pool(this.Bodies.circle(...Object.values(this.getRandomPosition(50)), 20, { mass: 1 }));
-		this.add_pool(this.Bodies.circle(...Object.values(this.getRandomPosition(50)), 20, { mass: 1 }));
-		this.add_pool(this.player.body);
+		this.add_pool(
+			new Entity(this, {
+				body: this.Bodies.circle(...Object.values(this.getRandomPosition(50)), 50, { isStatic: true, mass: 20 })
+			}
+		));
 
-		this.World.add(this.engine.world, [...this.pool]);
+		for (let i = 0; i < 2; i++) {
+			console.log(i);
+			this.add_pool(
+				new Entity(this, {
+					body: this.Bodies.circle(...Object.values(this.getRandomPosition(50)), 20, { mass: 1 })
+				}
+			));
+		}
+
+		this.add_pool(this.player);
+		const pool_body = this.pool.filter(e => e.body);
+		this.World.add(this.engine.world, [...pool_body]);
 
 		const mouse = this.Mouse.create(this.render.canvas);
 		const mouseConstraint = this.MouseConstraint.create(this.engine, {
@@ -107,7 +120,7 @@ class Game {
 
 	add_pool(entity) {
 		this.pool.push(entity);
-		this.Composite.add(this.world, entity);
+		this.Composite.add(this.world, entity.body);
 	}
 
 	getRandomPosition(radius) {
@@ -118,26 +131,27 @@ class Game {
 	}
 
 	applyCustomGravity() {
-		const static_bodies = this.pool.filter(e => e.isStatic);
-		const no_static_bodies = this.pool.filter(e => !e.isStatic);
+
+		const static_bodies = this.pool.filter(e => e.body.isStatic);
+		const no_static_bodies = this.pool.filter(e => !e.body.isStatic);
+
+
 		const velocities = [];
 		for (const dynamic_body of no_static_bodies) {
-			if (!this.isValidVector(dynamic_body.position)) return;
-			if (dynamic_body == this.player.body) velocities.push(this.player.controller.getMoveVector());
+			if (!this.isValidVector(dynamic_body.body.position)) return;
+			if (dynamic_body.body == this.player.body) velocities.push(this.player.controller.getMoveVector());
 			
 			for (const static_body of static_bodies) {
-				if (!this.isValidVector(static_body.position)) return;
-				if (dynamic_body === this.player.body && this.player.controller.control.orbit) {
-					velocities.push(this.player.controller.getOrbitalVector(dynamic_body, static_body));
-				} 
+				if (!this.isValidVector(static_body.body.position)) return;
+				//if (dynamic_body.body === this.player.body && this.player.controller.control.orbit) 
+				velocities.push(this.getOrbitalVector(dynamic_body.body, static_body.body));
 					
-				const distanceVector = this.Vector.sub(dynamic_body.position, static_body.position);
+				const distanceVector = this.Vector.sub(dynamic_body.body.position, static_body.body.position);
 				const distance = this.Vector.magnitude(distanceVector);
 				
-				const forceMagnitude = G * (static_body.mass * dynamic_body.mass) / (distance * distance);
+				const forceMagnitude = G * (static_body.body.mass * dynamic_body.body.mass) / (distance * distance);
 				
 				const normalizedDistanceVector = this.Vector.normalise(distanceVector);
-				
 
 				let gravity_velocity = this.Vector.mult(normalizedDistanceVector, -forceMagnitude);
 
@@ -145,10 +159,24 @@ class Game {
 					gravity_velocity = this.Vector.add(gravity_velocity, velocity);
 				}
 				
-				this.Body.applyForce(dynamic_body, dynamic_body.position, gravity_velocity);
+				this.Body.applyForce(dynamic_body.body, dynamic_body.body.position, gravity_velocity);
 			};
 		};
 	}
+
+	getOrbitalVector(dynamic_body, static_body) {
+        const distanceVector = this.Vector.sub(dynamic_body.position, static_body.position);
+        const current_distance = this.Vector.magnitude(distanceVector);
+
+        const orbitalSpeed = G * static_body.mass / (current_distance * current_distance);
+        
+        const normalizedDistanceVector = this.Vector.normalise(distanceVector);
+        const perpendicularDirection = this.Vector.perp(normalizedDistanceVector);
+
+        const velocity = this.Vector.mult(perpendicularDirection, orbitalSpeed);
+        
+        return velocity;
+    }
 
 	isValidVector(vector) {
 		return vector && !isNaN(vector.x) && !isNaN(vector.y);
@@ -158,9 +186,9 @@ class Game {
 		this.Render.run(this.render);
 	}
 
-	update() {
+	update(delta) {
 		for (const entity of this.pool) {
-			if (entity.update) entity.update();
+			entity.update(delta);
 		}
 		this.Engine.update(this.engine);
 	}
