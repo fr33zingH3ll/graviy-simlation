@@ -135,9 +135,8 @@ class Game {
 		const static_bodies = this.pool.filter(e => e.body.isStatic);
 		const no_static_bodies = this.pool.filter(e => !e.body.isStatic);
 
-
-		const velocities = [];
 		for (const dynamic_body of no_static_bodies) {
+			const velocities = [];
 			if (!this.isValidVector(dynamic_body.body.position)) return;
 			if (dynamic_body.body == this.player.body) velocities.push(this.player.controller.getMoveVector());
 			
