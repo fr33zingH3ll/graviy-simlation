@@ -15,6 +15,7 @@ class Player extends Entity {
     }
 
     update(delta) {
+        this.game.gravity.velocities.push({ id: this.id, velocity: this.controller.getMoveVector() });
         if (this.timer >= this.shot_cooldown) {
             this.timer = 0;
             this.can_shot = true;
@@ -24,7 +25,6 @@ class Player extends Entity {
             this.shot();
             this.can_shot = false;
         }
-
     }
 }
 
