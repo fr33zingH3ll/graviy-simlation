@@ -1,12 +1,15 @@
 import * as matter from 'matter-js';
 import { Controller } from './Controller.js';
-import { Player } from './Player.js';
-import { Entity } from './Entity.js';
+import { Player } from './Entity/Player.js';
 import { Gravity } from './Gravity.js';
+import { Scene } from './lib/Scene.js';
+import { CustomMath } from './lib/Utils.js';
+import { StaticEntity } from './Entity/StaticEntity.js';
+import { LivingEntity } from './Entity/LivingEntity.js';
 
-class Game {
+class Game extends Scene {
     constructor() {
-        this.pool = [];
+        super();
         this.Engine = matter.Engine;
         this.Render = matter.Render;
         this.World = matter.World;
@@ -44,21 +47,21 @@ class Game {
         this.render.canvas.style.display = 'block';
 
         this.player = new Player(this, {
-            body: this.Bodies.rectangle(...Object.values(this.getRandomPosition(50)), 10, 10, { mass: 1}),
+            body: this.Bodies.rectangle(...Object.values(CustomMath.getRandomPosition(50)), 10, 10, { mass: 1}),
             controller: new Controller(this)
         });
 
         this.add_pool(
-            new Entity(this, {
-                body: this.Bodies.circle(...Object.values(this.getRandomPosition(50)), 50, { isStatic: true, mass: 20 })
+            new StaticEntity(this, {
+                body: this.Bodies.circle(...Object.values(CustomMath.getRandomPosition(50)), 50, { isStatic: true, mass: 1000 })
             }
         ));
 
         for (let i = 0; i < 2; i++) {
             console.log(i);
             this.add_pool(
-                new Entity(this, {
-                    body: this.Bodies.circle(...Object.values(this.getRandomPosition(50)), 20, { mass: 1 })
+                new LivingEntity(this, {
+                    body: this.Bodies.circle(...Object.values(CustomMath.getRandomPosition(50)), 20, { mass: 20 })
                 }
             ));
         }
@@ -102,11 +105,20 @@ class Game {
 
         this.Events.on(this.engine, 'beforeUpdate', () => {
             this.gravity.applyCustomGravity();
+            for (const entity of this.pool) {
+                if (!entity.body.isStatic) {
+                    entity.trail.push({ x: entity.body.position.x, y: entity.body.position.y });
+                    if (entity.trail.length > 100) {
+                        entity.trail.shift();
+                    }
+                    entity.renderTrail();
+                }
+            }
         });
     }
 
     add_pool(entity) {
-        this.pool.push(entity);
+        super.add_pool(entity);
         this.Composite.add(this.world, entity.body);
     }
 
@@ -115,16 +127,11 @@ class Game {
     }
 
     update(delta) {
+        console.log(this.player.controller.getShotAngle());
         for (const entity of this.pool) {
             entity.update(delta);
         }
         this.Engine.update(this.engine);
-    }
-
-    getRandomPosition(offset) {
-        const x = Math.random() * (this.screenWidth - 2 * offset) + offset;
-        const y = Math.random() * (this.screenHeight - 2 * offset) + offset;
-        return { x, y };
     }
 }
 

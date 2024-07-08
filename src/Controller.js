@@ -13,6 +13,10 @@ class Controller {
         this.game = game;
         this.keybind = {right: 'd', left: 'q', up: 'z', down: 's', orbit: 'a', left_click: 'mouseLeft'};
         this.control = {right: false, left: false, up: false, down: false, left_click: false, ctrl_wheel: false};
+
+        this.mouse = {
+            position: { x: 0, y: 0 }
+        };
         this.setupEventListeners();
     }
 
@@ -25,6 +29,7 @@ class Controller {
 
         window.addEventListener('mousedown', this.handleMouseDown);
         window.addEventListener('mouseup', this.handleMouseUp);
+        window.addEventListener('mousemove', this.handleMouseMove);
 
         window.addEventListener('wheel', this.handleWheel);
     }
@@ -38,6 +43,7 @@ class Controller {
 
         window.removeEventListener('mousedown', this.handleMouseDown);
         window.removeEventListener('mouseup', this.handleMouseUp);
+        window.removeEventListener('mousemove', this.handleMouseMove);
 
         window.removeEventListener('wheel', this.handleWheel);
     }
@@ -96,10 +102,17 @@ class Controller {
      * Handles mouseup events to stop shooting.
      * @param {MouseEvent} event - The mouse event object.
     */
-   handleMouseUp = (event) => {
+    handleMouseUp = (event) => {
         if (event.button === 0) { // Left mouse button
             this.control.left_click = false;
         }
+    }
+
+    handleMouseMove = (event) => {
+        const mouseX = event.clientX;
+        const mouseY = event.clientY;
+
+        this.mouse.position = { x: mouseX, y: mouseY };
     }
 
     /**
@@ -170,18 +183,15 @@ class Controller {
         return final_vector;
     }
 
-    getOrbitalVector(dynamic_body, static_body) {
-        const distanceVector = this.game.Vector.sub(dynamic_body.position, static_body.position);
-        const current_distance = this.game.Vector.magnitude(distanceVector);
+    getShotAngle() {
+        const point1 = this.game.player.body.position;
+        const point2 = this.mouse.position;
 
-        const orbitalSpeed = G * static_body.mass / (current_distance * current_distance);
-        
-        const normalizedDistanceVector = this.game.Vector.normalise(distanceVector);
-        const perpendicularDirection = this.game.Vector.perp(normalizedDistanceVector);
+        const dx = point2.x - point1.x;
+        const dy = point2.y - point1.y;
 
-        const velocity = this.game.Vector.mult(perpendicularDirection, -orbitalSpeed);
-        
-        return velocity;
+        const angleRadians = Math.atan2(dy, dx);
+        return angleRadians;
     }
 }
 

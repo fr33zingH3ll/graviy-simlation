@@ -3,12 +3,11 @@ class CustomMath {
         throw new Error("Cannot instantiate the CustomMath class.");
     }
 
-    static getRandomPosition(radius) {
-		return {
-			x: Math.random() * (this.screenWidth - 2 * radius) + radius,
-			y: Math.random() * (this.screenHeight - 2 * radius) + radius
-		};
-	}
+    static getRandomPosition(offset) {
+        const x = Math.random() * (window.innerWidth - 2 * offset) + offset;
+        const y = Math.random() * (window.innerHeight - 2 * offset) + offset;
+        return { x, y };
+    }
 }
 
 class CustomVector {

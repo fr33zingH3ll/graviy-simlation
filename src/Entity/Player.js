@@ -1,6 +1,7 @@
-import { Entity } from "./Entity.js";
+import { Bullet } from "./Bullet.js";
+import { LivingEntity } from "./LivingEntity.js";
 
-class Player extends Entity {
+class Player extends LivingEntity {
     constructor(game, options) {
         super(game, options)
         this.controller = options.controller;
@@ -10,8 +11,19 @@ class Player extends Entity {
         this.can_shot = true;
     }
 
+    onDied() {
+        super.onDied();
+        this.controller.removeEventListeners();
+    }
+
     shot() {
-        console.log("j'ai tiré");
+        this.game.add_pool(
+            new Bullet(this.game, {
+                body: this.game.Bodies.circle(...Object.values(this.body.position), 100, { mass: 0.1 }),
+                target: this.controller.getShotAngle(),
+                topSpeed: /*this.game.gravity.G*/ 1
+            })
+        );
     }
 
     update(delta) {
